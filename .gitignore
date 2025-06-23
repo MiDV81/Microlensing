@@ -1,0 +1,13 @@
+# Ignore logs
+*.log
+logs/
+
+# Ignore virtual environment
+.microlensingenv/
+
+# Ignore IDE files
+.vscode/
+.idea/
+
+# Ignore environment variables
+.env
