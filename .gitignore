@@ -11,3 +11,5 @@ microlensingenv/
 
 # Ignore environment variables
 .env
+
+**/__pycache__
