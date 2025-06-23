@@ -3,7 +3,7 @@
 logs/
 
 # Ignore virtual environment
-.microlensingenv/
+microlensingenv/
 
 # Ignore IDE files
 .vscode/
