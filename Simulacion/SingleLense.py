@@ -3,7 +3,8 @@ import os
 
 # Add the Functions directory to the Python path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from Functions.SimulationFunctions import trajectory_single_lens, magnification_single_lens, plot_single_lens, SingleLens_Data
+from Functions.SimulationFunctions import SingleLens_Data
+from Functions.PlotFunctions import plot_single_lens
 import numpy as np
 
 # Crear el directorio si no existe
