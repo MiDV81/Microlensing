@@ -176,7 +176,10 @@ def plot_binary_lens_trajectory_interactive(binary_data: BinaryLens_Data, plot_t
     if plot_trajectory and ax1 is not None:
         print("Configurando plot de trayectorias...".ljust(50), end="\r")
         # Plot elementos estáticos
-        ax1.plot(binary_data.z1, 0, 'k*', markersize=15, label=f'Lente 1 (m={binary_data.m1:.2f})')
+        if binary_data.z1 is not None:
+            ax1.plot(binary_data.z1, 0, 'k*', markersize=15, label=f'Lente 1 (m={binary_data.m1:.2f})')
+        else:
+            raise ValueError("binary_data.z1 must not be None.")
         ax1.plot(binary_data.z2, 0, 'k*', markersize=15, label=f'Lente 2 (m={binary_data.m2:.2f})')
         
         # Trayectoria completa de la fuente
@@ -288,26 +291,36 @@ def plot_binary_lens_trajectory_interactive(binary_data: BinaryLens_Data, plot_t
     print("=== Plot interactivo listo para usar ===")
     plt.show()
     
-def plot_binary_lens_caustics_grid(binary_systems: list, topology_labels: Optional[list] = None, 
-                                  num_points: int = 1000, save_path: Optional[str] = None):
+def plot_binary_lens_caustics_grid(binary_systems: list[BinaryLens_Data], topology_labels: Optional[list] = None, 
+                                  num_points: int = 1000, num_rows: int = 1,
+                                  auto_limits: bool = True, save_path: Optional[str] = None):
     """
-    Plotea curvas críticas y caústicas para tres sistemas de lentes binarias en una grilla.
+    Plotea curvas críticas y caústicas para múltiples sistemas de lentes binarias en una grilla.
     
     Args:
-        binary_systems (list): Lista de 3 objetos BinaryLens_Data
-        topology_labels (list): Lista de 3 etiquetas de topología (opcional)
+        binary_systems (list): Lista de objetos BinaryLens_Data
+        topology_labels (list): Lista de etiquetas de topología (opcional). Si se proporciona y no está vacía, 
+                               se mostrarán como etiquetas en la parte inferior. Siempre se mostrará q y d como título.
         num_points (int): Número de puntos para calcular las curvas
+        num_rows (int): Número de filas en la grilla (default: 1)
+        auto_limits (bool): Si True, ajusta los límites de los ejes a ±4*z1 para cada sistema (default: True)
         save_path (str): Ruta para guardar la imagen (opcional)
     """
-    # Validar que se proporcionan exactamente 3 sistemas
-    if len(binary_systems) != 3:
-        raise ValueError("Se requieren exactamente 3 sistemas de lentes binarias")
+    # Validar que se proporcionan sistemas
+    if len(binary_systems) == 0:
+        raise ValueError("Se requiere al menos un sistema de lentes binarias")
     
-    # Establecer etiquetas por defecto si no se proporcionan
-    if topology_labels is None:
-        topology_labels = ['Sistema 1', 'Sistema 2', 'Sistema 3']
+    # Validar que el número de sistemas es múltiplo del número de filas
+    num_systems = len(binary_systems)
+    if num_systems % num_rows != 0:
+        print(f"Warning: El número de sistemas ({num_systems}) no es múltiplo del número de filas ({num_rows})")
     
-    print(f"Calculando y ploteando curvas críticas y caústicas para {len(binary_systems)} sistemas binarios...")
+    # Calcular número de columnas
+    num_cols = num_systems // num_rows
+    if num_systems % num_rows != 0:
+        num_cols += 1  # Añadir una columna extra si hay resto
+    
+    print(f"Calculando y ploteando curvas críticas y caústicas para {num_systems} sistemas binarios en grilla {num_rows}x{num_cols}...")
     
     # Calcular curvas críticas y caústicas para cada sistema si no están calculadas
     for i, binary_data in enumerate(binary_systems):
@@ -318,38 +331,63 @@ def plot_binary_lens_caustics_grid(binary_systems: list, topology_labels: Option
     
     # Crear figura con GridSpec para control preciso del layout
     from matplotlib.gridspec import GridSpec
-    fig = plt.figure(figsize=(15, 5))
-    gs = GridSpec(1, 3, wspace=0.02, hspace=0)  # Espaciado mínimo entre subplots
+    fig_width = 5 * num_cols
+    fig_height = 4 * num_rows  # Reduced height per row
+    fig = plt.figure(figsize=(fig_width, fig_height))
     
-    # Iterar sobre los tres sistemas binarios
-    for i, (binary_data, topology) in enumerate(zip(binary_systems, topology_labels)):
-        # Crear subplot individual
-        ax = fig.add_subplot(gs[0, i])
+    # Ajustar espaciado - subplots tocándose horizontalmente, más espacio vertical si hay múltiples filas o etiquetas
+    if num_rows > 1:
+        gs = GridSpec(num_rows, num_cols, wspace=-0.3, hspace=0.15)  # No horizontal spacing, more vertical spacing for multiple rows
+    elif topology_labels and len(topology_labels) > 0:
+        gs = GridSpec(num_rows, num_cols, wspace=-0.3, hspace=0.1)  # No horizontal spacing, slightly more vertical spacing for bottom labels
+    else:
+        gs = GridSpec(num_rows, num_cols, wspace=-0.3, hspace=0.02)  # No horizontal spacing, minimal vertical spacing
+
+    # Iterar sobre todos los sistemas binarios
+    for i, binary_data in enumerate(binary_systems):
+        # Obtener etiqueta de topología si está disponible
+        topology = topology_labels[i] if topology_labels and i < len(topology_labels) else None
         
-        # Plotear curvas críticas en azul
-        if len(binary_data.critical_points) > 0:
-            ax.scatter(binary_data.critical_points.real, binary_data.critical_points.imag, 
-                      s=1, c='b', alpha=0.5, label='Critical Curves')
+        # Calcular posición en la grilla
+        row = i // num_cols
+        col = i % num_cols
         
-        # Plotear caústicas en rojo
-        if len(binary_data.caustic_points) > 0:
-            ax.scatter(binary_data.caustic_points.real, binary_data.caustic_points.imag, 
-                      s=1, c='r', alpha=0.5, label='Caustics')
+                # Crear subplot individual
+        ax = fig.add_subplot(gs[row, col])
         
-        # Añadir círculos negros para representar las posiciones de las lentes
-        circle1 = Circle((binary_data.z1, 0), 0.1*np.sqrt(binary_data.m1), 
+        # Añadir círculos negros para representar las posiciones de las lentes (PRIMERO)
+        if binary_data.m1 is None or binary_data.m2 is None or binary_data.z1 is None or binary_data.z2 is None:
+            raise ValueError("Lens masses m1, m2 and positions z1, z2 must not be None.")
+        circle1 = Circle((float(binary_data.z1), 0), 0.1 * np.sqrt(float(binary_data.m1)), 
                         color='black', fill=True)
-        circle2 = Circle((binary_data.z2, 0), 0.1*np.sqrt(binary_data.m2), 
+        circle2 = Circle((float(binary_data.z2), 0), 0.1 * np.sqrt(float(binary_data.m2)), 
                         color='black', fill=True)
         ax.add_patch(circle1)
         ax.add_patch(circle2)
         
+        # Plotear curvas críticas en azul (DESPUÉS DE LAS LENTES)
+        if len(binary_data.critical_points) > 0:
+            ax.scatter(binary_data.critical_points.real, binary_data.critical_points.imag, 
+                      s=1, c='b', alpha=0.5, label='Critical Curves')
+        
+        # Plotear caústicas en rojo (DESPUÉS DE LAS LENTES)
+        if len(binary_data.caustic_points) > 0:
+            ax.scatter(binary_data.caustic_points.real, binary_data.caustic_points.imag, 
+                      s=1, c='r', alpha=0.5, label='Caustics')
+        
         # Añadir grilla sutil de fondo
         ax.grid(True, color='gray', linestyle='-', linewidth=0.5, alpha=0.9)
         
-        # Establecer límites consistentes para todos los subplots
-        ax.set_xlim(-2, 2)
-        ax.set_ylim(-2, 2)
+        # Establecer límites de los ejes
+        if auto_limits:
+            # Límites basados en z1 para cada sistema individual
+            limit = 2 * abs(binary_data.z1)
+            ax.set_xlim(-limit, limit)
+            ax.set_ylim(-limit, limit)
+        else:
+            # Límites fijos para todos los subplots
+            ax.set_xlim(-2, 2)
+            ax.set_ylim(-2, 2)
         ax.set_aspect('equal')  # Mantener aspecto cuadrado
         
         # Ocultar etiquetas de los ejes para un aspecto más limpio
@@ -362,19 +400,22 @@ def plot_binary_lens_caustics_grid(binary_systems: list, topology_labels: Option
             spine.set_visible(False)
         
         # Calcular parámetros físicos del sistema
-        q = binary_data.m2 / binary_data.m1 if binary_data.m1 != 0 else binary_data.m1 / binary_data.m2  # Razón de masas
+        q = binary_data.q  # Use the calculated q from the class
         d = 2 * abs(binary_data.z1)  # Separación total entre lentes
         
-        # Añadir texto con parámetros del sistema en la parte superior
-        ax.text(0.5, 1.01, f"$q$ = {q:.2f}, $d$ = {d:.2f}", 
-                ha='center', va='bottom', transform=ax.transAxes, 
-                fontsize=14, color='black', weight="bold")
+        # Añadir etiqueta de parámetros como título (siempre en la parte superior)
+        title_str = f"q={q:.3f}, d={d:.1f}"  
+        ax.set_title(title_str, fontsize=12, weight="bold")
         
-        # Añadir etiqueta de topología en la parte inferior
-        ax.text(0.5, -0.08, topology, 
-                ha='center', va='top', transform=ax.transAxes, 
-                fontsize=14, color='black', weight="bold")
-    
+        # Añadir etiqueta de topología en la parte inferior si está disponible
+        if topology:
+            from matplotlib.patches import Rectangle
+            text_x, text_y = 0.5, -0.08  # Posición en la parte inferior
+            bbox_props = dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8, edgecolor='none')
+            ax.text(text_x, text_y, topology, 
+                    ha='center', va='bottom', transform=ax.transAxes, 
+                    fontsize=12, color='black', weight="bold",
+                    bbox=bbox_props)
     # Guardar la figura si se especifica una ruta
     if save_path:
         plt.savefig(save_path, bbox_inches='tight', dpi=300)
@@ -479,19 +520,23 @@ def plot_binary_lens_trajectory_static(binary_data: BinaryLens_Data,
             # Add legend entries as lines
             plot_ax.plot([], [], 'b-', alpha=0.6, linewidth=2, label='Curvas Críticas')
             plot_ax.plot([], [], 'r-', alpha=0.6, linewidth=2, label='Caústicas')
-        
-        # Dibujar lentes como círculos identificables
+
+        if binary_data.m1 is None or binary_data.m2 is None:
+            raise ValueError("Lens masses m1 and m2 must not be None.")  
         lens1_size = 0.15 * binary_data.m1
         lens2_size = 0.15 * binary_data.m2
+        if binary_data.z1 is None or binary_data.z2 is None:
+            raise ValueError("Lens positions z1 and z2 must not be None.")
         lens1_circle = Circle((binary_data.z1, 0), lens1_size, 
                              facecolor='k', edgecolor='red', fill=True, zorder=10)
         lens2_circle = Circle((binary_data.z2, 0), lens2_size, 
                              facecolor='k', edgecolor='red', fill=True, zorder=10)
         plot_ax.add_patch(lens1_circle)
         plot_ax.add_patch(lens2_circle)
-        
+        # Raise error if any lens mass is None
+              
         # Add lens labels to legend
-        plot_ax.plot([], [], 'ko', markersize=8, label=f'Lentes (m1={binary_data.m1:.1f}, m2={binary_data.m2:.1f})')
+        plot_ax.plot([], [], 'ko', markersize=8, label=f'Lentes')
         
         # Plot trayectoria completa de la fuente
         source_real = [z.real for z in binary_data.zeta]

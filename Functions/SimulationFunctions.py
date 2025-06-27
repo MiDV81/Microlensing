@@ -116,16 +116,24 @@ class BinaryLens_Data:
     """
     Dataclass para almacenar todos los datos de un sistema de lentes binarias.
     
+    Accepts any two of: m_t, m_d, m1, m2, q and calculates the rest automatically.
+    Relationships: q = m2/m1, m_t = m1 + m2, m_d = m1 - m2
+    
+    Position can be defined either by z1 OR d:
+    - z1 (float): Position of first lens (second lens at -z1)
+    - d (float): Separation distance between lenses (z1 = d/2)
+    
     Attributes:
-        # Parámetros de entrada
-        m_t (float): Masa total del sistema
-        m_d (float): Diferencia de masa entre lentes
-        z1 (float): Posición de la primera lente (segunda lente en -z1)
+        # Position parameters (provide either z1 OR d, not both)
+        z1 (float, optional): Posición de la primera lente (segunda lente en -z1)
+        d (float, optional): Separación entre lentes (z1 = d/2)
         
-        # Masas individuales calculadas
-        m1 (float): Masa de la primera lente
-        m2 (float): Masa de la segunda lente
-        z2 (float): Posición de la segunda lente
+        # Parámetros de entrada (any two of these five)
+        m_t (float, optional): Masa total del sistema
+        m_d (float, optional): Diferencia de masa entre lentes  
+        m1 (float, optional): Masa de la primera lente
+        m2 (float, optional): Masa de la segunda lente
+        q (float, optional): Ratio de masas q = m2/m1
         
         # Parámetros de trayectoria (opcionales)
         start_point (tuple): Punto inicial de la trayectoria (x, y)
@@ -143,43 +151,172 @@ class BinaryLens_Data:
         critical_points (np.ndarray): Puntos de las curvas críticas
         caustic_points (np.ndarray): Puntos de las caústicas
     """
-    # Parámetros de entrada
-    m_t: float
-    m_d: float
-    z1: float
+    # Position parameters (provide either z1 OR d, not both)
+    z1: Optional[float] = None  # Position of first lens
+    d: Optional[float] = None   # Separation distance between lenses
+    
+    # Mass parameters (any two of these five should be provided)
+    m_t: Optional[float] = None  # Total mass
+    m_d: Optional[float] = None  # Mass difference
+    m1: Optional[float] = None   # Mass of first lens
+    m2: Optional[float] = None   # Mass of second lens
+    q: Optional[float] = None    # Mass ratio q = m2/m1
     
     # Parámetros de trayectoria (opcionales)
     start_point: Optional[tuple] = None
     end_point: Optional[tuple] = None
     num_points: int = 1000
     
-    # Masas y posiciones calculadas
-    m1: float = field(init=False)
-    m2: float = field(init=False)
+    # Posición de la segunda lente (calculated)
     z2: float = field(init=False)
     
     # Datos de la fuente
     zeta: NDArray[np.complex128] = field(default_factory=lambda: np.array([]))
     
     # Soluciones
-    image_positions: np.ndarray = field(default_factory=lambda: np.array([]))
+    image_positions: NDArray[np.complex128] = field(default_factory=lambda: np.array([]))
     magnification: np.ndarray = field(default_factory=lambda: np.array([]))
     
     # Curvas críticas y caústicas
-    critical_points: np.ndarray = field(default_factory=lambda: np.array([]))
-    caustic_points: np.ndarray = field(default_factory=lambda: np.array([]))
+    critical_points: NDArray[np.complex128] = field(default_factory=lambda: np.array([]))
+    caustic_points: NDArray[np.complex128] = field(default_factory=lambda: np.array([]))
     
     def __post_init__(self):
-        """Calcular masas individuales, posición de la segunda lente y generar trayectoria si es necesario"""
-        # Calcular masas individuales y posición de la segunda lente
-        self.m1 = (self.m_t + self.m_d) / 2
-        self.m2 = (self.m_t - self.m_d) / 2
+        """Calculate all parameters from provided inputs and generate trajectory if needed"""
+        self._calculate_position_parameters()
+        self._calculate_mass_parameters()
+        if self.z1 is None:
+            raise ValueError("z1 must be set before assigning z2. Check position parameters.")
         self.z2 = -self.z1
         
         # Generar trayectoria si zeta está vacío pero se proporcionaron puntos de trayectoria
         if len(self.zeta) == 0 and self.start_point is not None and self.end_point is not None:
             print(f"Generando trayectoria desde {self.start_point} hasta {self.end_point} con {self.num_points} puntos...")
             self._generate_trajectory()
+    
+    def __repr__(self) -> str:
+        """Custom string representation for BinaryLens_Data"""
+        return (f"BinaryLens_Data: "
+                f"Mass Parameters: m_t={self.m_t:.3f}, m_d={self.m_d:.3f}, m1={self.m1:.3f}, m2={self.m2:.3f}, q={self.q:.3f} | "
+                f"Positions: z1={self.z1:.3f}, z2={self.z2:.3f}, d={self.d:.3f} | "
+                f"Source pos: len(zeta)={len(self.zeta)} | "
+                f"Image pos: len(image_positions)={len(self.image_positions)} | "
+                f"Magnification: len(magnification)={len(self.magnification)} | "
+                f"Critical curves: len(critical_points)={len(self.critical_points)} | "
+                f"Caustics: len(caustic_points)={len(self.caustic_points)}")
+    
+    def _calculate_position_parameters(self):
+        """Calculate z1 and d from the provided position parameter"""
+        # Count position parameters provided
+        position_params = sum([
+            self.z1 is not None,
+            self.d is not None
+        ])
+        
+        if position_params == 0:
+            raise ValueError("Either z1 or d must be provided")
+        elif position_params > 1:
+            raise ValueError("Provide either z1 OR d, not both")
+        
+        # Calculate missing parameter
+        if self.z1 is not None:
+            # z1 provided, calculate d
+            self.d = 2 * abs(self.z1)
+            print(f"Position parameters: z1={self.z1:.3f} provided, calculated d={self.d:.3f}")
+        elif self.d is not None:
+            # d provided, calculate z1
+            if self.d <= 0:
+                raise ValueError(f"Separation distance d must be positive: d={self.d}")
+            self.z1 = self.d / 2
+            print(f"Position parameters: d={self.d:.3f} provided, calculated z1={self.z1:.3f}")
+    
+    def _calculate_mass_parameters(self):
+        """Calculate all mass parameters from any two provided"""
+        # Count how many parameters are provided
+        provided_params = sum([
+            self.m_t is not None,
+            self.m_d is not None, 
+            self.m1 is not None,
+            self.m2 is not None,
+            self.q is not None
+        ])
+        
+        if provided_params < 2:
+            raise ValueError("At least two mass parameters must be provided from: m_t, m_d, m1, m2, q")
+        elif provided_params > 2:
+            print(f"Warning: {provided_params} mass parameters provided. Using first two found for calculation.")
+        
+        # Case 1: m1 and m2 provided
+        if self.m1 is not None and self.m2 is not None:
+            self.m_t = self.m1 + self.m2
+            self.m_d = self.m1 - self.m2
+            self.q = self.m2 / self.m1
+            
+        # Case 2: m_t and m_d provided
+        elif self.m_t is not None and self.m_d is not None:
+            self.m1 = (self.m_t + self.m_d) / 2
+            self.m2 = (self.m_t - self.m_d) / 2
+            self.q = self.m2 / self.m1
+            
+        # Case 3: m_t and q provided
+        elif self.m_t is not None and self.q is not None:
+            self.m1 = self.m_t / (1 + self.q)
+            self.m2 = self.q * self.m1
+            self.m_d = self.m1 - self.m2
+            
+        # Case 4: m_d and q provided
+        elif self.m_d is not None and self.q is not None:
+            self.m1 = self.m_d / (1 - self.q)
+            self.m2 = self.q * self.m1
+            self.m_t = self.m1 + self.m2
+            
+        # Case 5: m1 and m_t provided
+        elif self.m1 is not None and self.m_t is not None:
+            self.m2 = self.m_t - self.m1
+            self.m_d = self.m1 - self.m2
+            self.q = self.m2 / self.m1
+            
+        # Case 6: m1 and m_d provided
+        elif self.m1 is not None and self.m_d is not None:
+            self.m2 = self.m1 - self.m_d
+            self.m_t = self.m1 + self.m2
+            self.q = self.m2 / self.m1
+            
+        # Case 7: m1 and q provided
+        elif self.m1 is not None and self.q is not None:
+            self.m2 = self.q * self.m1
+            self.m_t = self.m1 + self.m2
+            self.m_d = self.m1 - self.m2
+            
+        # Case 8: m2 and m_t provided
+        elif self.m2 is not None and self.m_t is not None:
+            self.m1 = self.m_t - self.m2
+            self.m_d = self.m1 - self.m2
+            self.q = self.m2 / self.m1
+            
+        # Case 9: m2 and m_d provided
+        elif self.m2 is not None and self.m_d is not None:
+            self.m1 = self.m2 + self.m_d
+            self.m_t = self.m1 + self.m2
+            self.q = self.m2 / self.m1
+            
+        # Case 10: m2 and q provided
+        elif self.m2 is not None and self.q is not None:
+            self.m1 = self.m2 / self.q
+            self.m_t = self.m1 + self.m2
+            self.m_d = self.m1 - self.m2
+            
+        else:
+            raise ValueError("Invalid combination of mass parameters provided")
+        
+        # Validation checks
+        if self.m1 <= 0 or self.m2 <= 0:
+            raise ValueError(f"Masses must be positive: m1={self.m1:.3f}, m2={self.m2:.3f}")
+        
+        if self.q <= 0:
+            raise ValueError(f"Mass ratio q must be positive: q={self.q:.3f}")
+        
+        print(f"Mass parameters calculated: m1={self.m1:.3f}, m2={self.m2:.3f}, m_t={self.m_t:.3f}, m_d={self.m_d:.3f}, q={self.q:.3f}")
     
     def _generate_trajectory(self):
         """Genera la trayectoria entre start_point y end_point"""
@@ -217,7 +354,11 @@ def coefficients_lens_equation_binary_point(zeta: complex, binary_data: BinaryLe
     z_1 = binary_data.z1
     m_t = binary_data.m_t
     m_d = binary_data.m_d
-    
+
+    # Check that z_1, m_t and m_d are not None
+    if z_1 is None or m_t is None or m_d is None:
+        raise ValueError("z1, m_t, and m_d must not be None in coefficients_lens_equation_binary_point")
+
     # Conjugado complejo de zeta
     zeta_conj = np.conjugate(zeta)
     
@@ -386,7 +527,11 @@ def solve_critical_curve_binary_lense(phi: float, binary_data: BinaryLens_Data, 
     z1 = binary_data.z1
     m1 = binary_data.m1
     m2 = binary_data.m2
-    
+
+    # Ensure z1, m1 and m2 are not None
+    if z1 is None or m1 is None or m2 is None:
+        raise ValueError("z1, m1, and m2 must be set (not None) in solve_critical_curve_binary_lense")
+
     # Calcular coeficientes
     exp_iphi = np.exp(-1j * phi)
     

@@ -16,7 +16,7 @@ print("=== Análisis Estático de Trayectoria de Lentes Binarias ===")
 
 # Definir parámetros del sistema
 m_t = 1.0      # Masa total
-m_d = 0.6      # Diferencia de masa
+q = 0.1        # Relación de masas
 z1 = 0.5       # Posición de la primera lente
 
 # Definir trayectoria
@@ -26,7 +26,7 @@ num_points = 2_000          # Número de puntos en la trayectoria
 
 binary_system = BinaryLens_Data(
     m_t=m_t, 
-    m_d=m_d, 
+    q=q, 
     z1=z1,
     start_point=start_point,
     end_point=end_point,
@@ -39,8 +39,8 @@ print(f"{binary_system=}")
 plot_binary_lens_trajectory_static(
     binary_system,
     show_caustics=True,
-    special_indices = [800, 964, 1075, 1199, 1400],
+    special_indices = [800, 995, 1030, 1170, 1293, 1400],
     plot_type='both',
-    save_path=os.path.join(output_dir, 'binary_lens_trajectory_static_complete.pdf')
+    save_path=os.path.join(output_dir, 'binary_lens_trajectory_static_complete_v2.pdf')
 )
 
