@@ -191,7 +191,7 @@ class BinaryLens_Data:
         
         # Generar trayectoria si zeta está vacío pero se proporcionaron puntos de trayectoria
         if len(self.zeta) == 0 and self.start_point is not None and self.end_point is not None:
-            print(f"Generando trayectoria desde {self.start_point} hasta {self.end_point} con {self.num_points} puntos...")
+            # print(f"Generando trayectoria desde {self.start_point} hasta {self.end_point} con {self.num_points} puntos...")
             self._generate_trajectory()
     
     def __repr__(self) -> str:
@@ -222,13 +222,13 @@ class BinaryLens_Data:
         if self.z1 is not None:
             # z1 provided, calculate d
             self.d = 2 * abs(self.z1)
-            print(f"Position parameters: z1={self.z1:.3f} provided, calculated d={self.d:.3f}")
+            # print(f"Position parameters: z1={self.z1:.3f} provided, calculated d={self.d:.3f}")
         elif self.d is not None:
             # d provided, calculate z1
             if self.d <= 0:
                 raise ValueError(f"Separation distance d must be positive: d={self.d}")
             self.z1 = self.d / 2
-            print(f"Position parameters: d={self.d:.3f} provided, calculated z1={self.z1:.3f}")
+            # print(f"Position parameters: d={self.d:.3f} provided, calculated z1={self.z1:.3f}")
     
     def _calculate_mass_parameters(self):
         """Calculate all mass parameters from any two provided"""
@@ -316,7 +316,7 @@ class BinaryLens_Data:
         if self.q <= 0:
             raise ValueError(f"Mass ratio q must be positive: q={self.q:.3f}")
         
-        print(f"Mass parameters calculated: m1={self.m1:.3f}, m2={self.m2:.3f}, m_t={self.m_t:.3f}, m_d={self.m_d:.3f}, q={self.q:.3f}")
+        # print(f"Mass parameters calculated: m1={self.m1:.3f}, m2={self.m2:.3f}, m_t={self.m_t:.3f}, m_d={self.m_d:.3f}, q={self.q:.3f}")
     
     def _generate_trajectory(self):
         """Genera la trayectoria entre start_point y end_point"""
@@ -335,7 +335,7 @@ class BinaryLens_Data:
         if len(self.zeta) == 0:
             raise ValueError("No hay datos de trayectoria. Definir zeta o usar start_point/end_point.")
         
-        print("Calculando posiciones y magnificaciones de imágenes para toda la trayectoria...")
+        # print("Calculando posiciones y magnificaciones de imágenes para toda la trayectoria...")
         lens_equation_binary_lense(self)        
         magnification_binary_lense(self)        
         return self
@@ -489,7 +489,7 @@ def lens_equation_binary_lense(binary_data: BinaryLens_Data) -> BinaryLens_Data:
 
 def magnification_binary_lense(binary_data: BinaryLens_Data) -> BinaryLens_Data:
     """
-    Calcula las magnificaciones para todas las imágenes.
+    Calcula las magnificaciones totales para el sistema de lentes binarias.
     
     Args:
         binary_data (BinaryLens_Data): Datos del sistema con posiciones de imágenes
@@ -501,12 +501,12 @@ def magnification_binary_lense(binary_data: BinaryLens_Data) -> BinaryLens_Data:
     total_mags = []
         
     for i, image_positions in enumerate(binary_data.image_positions):
-        individual_mags = []
+        total_mag = 0
         for z in image_positions:
             mag = magnification_binary_point(z, binary_data)
-            individual_mags.append(mag)
+            total_mag += mag
             
-        total_mags.append(sum(individual_mags))
+        total_mags.append(total_mag)
         
     binary_data.magnification = np.array(total_mags)
     
