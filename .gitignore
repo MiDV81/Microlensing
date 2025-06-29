@@ -13,3 +13,12 @@ microlensingenv/
 .env
 
 **/__pycache__
+ExoplanetsDatabase/Exoplanets_Confirmed_db_1504.csv
+Redes/MicrolensingData/binarylense_lightcurves.pkl
+Redes/MicrolensingData/combined_lightcurves.pkl
+Redes/MicrolensingData/all_lightcurves.pkl
+Redes/MicrolensingData/noise_lightcurves.pkl
+Redes/MicrolensingData/singlelenses_lightcurves.pkl
+Redes/MicrolensingData/singlelense_lightcurves.pkl
+Redes/MicrolensingData/OGLE_IV_all_events.pkl.gz
+Redes/MicrolensingData/ogle_lightcurves.pkl
