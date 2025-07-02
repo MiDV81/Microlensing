@@ -1,10 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from typing import Optional
 from pathlib import Path
 import sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from Functions.NNFunctions import load_data, plot_curve_with_resampling, ROOT_DIR
+from Functions.NNFunctions import load_data, plot_curve_with_resampling, ROOT_DIR, normalize_array, resample_curve
 
 def analyze_event_predictions(predictions_file: str = "event_predictions.csv",
                              ogle_data_file: str = "ogle_lightcurves.pkl",
@@ -178,30 +179,56 @@ def get_detailed_statistics(predictions_file: str = "event_predictions.csv",
     
     return stats
 
+def plot_examples_by_type(predictions_df: pd.DataFrame, ogle_df: pd.DataFrame, DIR: Path, outname: str = "ejemplos_tipos.pdf"):
+    tipos = ["SingleLenseEvent", "BinaryLenseEvent", "Noise"]
+    etiquetas = ["Lentes Únicas", "Lentes Binarias", "Ruido"]
+    # Lista de posiciones verticales para las etiquetas de fila (modificable por el usuario)
+    posiciones_filas = [0.83, 0.5, 0.17]  # Por defecto todas centradas, puedes modificar cada valor
+    fig, axes = plt.subplots(3, 4, figsize=(20, 12))
+    for row, (tipo, etiqueta) in enumerate(zip(tipos, etiquetas)):
+        ids = predictions_df[predictions_df['Predicted_Type'] == tipo].sample(4).index
+        for col, idx in enumerate(ids):
+            lc = ogle_df.loc[idx]
+            normalized_time = normalize_array(lc['time'], range_type='minus_plus_one')
+            nt = normalized_time.tolist() if hasattr(normalized_time, 'tolist') else list(normalized_time)
+            mu = lc['mu']
+            mu_list = mu.tolist() if hasattr(mu, 'tolist') else list(mu)
+            smoothed_mu = resample_curve(nt, mu_list, sequence_length=1000, interpolation_method='savgol', return_times=False)
+            smoothed_time = resample_curve(nt, mu_list, sequence_length=1000, interpolation_method='savgol', return_times=True)[0]
+            axes[row, col].plot(smoothed_time, smoothed_mu, color='red', linewidth=2, label='Interpolación')
+            axes[row, col].scatter(normalized_time, lc['mu'], color='blue', alpha=0.6, s=20, label='Datos originales')
+            axes[row, col].text(0.5, 0.05, idx, transform=axes[row, col].transAxes, fontsize=10, fontweight='bold',
+                                bbox=dict(boxstyle="round,pad=0.3", facecolor='white', edgecolor='black', alpha=0.8),
+                                ha='center', va='bottom')
+            axes[row, col].set_xlabel('Tiempo Normalizado', fontsize=10)
+            axes[row, col].set_ylabel('Magnificación', fontsize=10)
+            axes[row, col].grid(True, alpha=0.3)
+    # Etiquetas centradas en la altura de cada fila, usando la lista de posiciones
+    for row, etiqueta in enumerate(etiquetas):
+        fig.text(0.08, posiciones_filas[row], etiqueta, fontsize=18, fontweight='bold', rotation=90, va='center', ha='center')
+    plt.tight_layout(rect=(0.08, 0, 1, 0.95))
+    plt.subplots_adjust(left=0.12, top=0.95)
+    output_path = DIR / "plots" / outname
+    plt.savefig(output_path, dpi=300, bbox_inches='tight')
+    print(f"Figura guardada en: {output_path}")
+    plt.show()
+
+# Ejemplo de uso al final del script:
 if __name__ == "__main__":
-    # Set working directory
     DIR = ROOT_DIR / "MicrolensingData"
+    predictions_file = "event_predictions.csv"
+    ogle_data_file = "ogle_lightcurves.pkl"
+    predictions_df = pd.read_csv(DIR / predictions_file, index_col=0)
+    ogle_df = load_data(ogle_data_file, DIR)
     
-    print("Event Predictions Analysis")
-    print("=" * 50)
-    
-    # Analyze predictions and plot examples
-    analyze_event_predictions(
-        predictions_file="event_predictions.csv",
-        ogle_data_file="ogle_lightcurves.pkl", 
-        DIR=DIR,
-        n_examples=3  # Number of binary lens examples to plot
-    )
-    
-    # Get detailed statistics
-    stats = get_detailed_statistics("event_predictions.csv", DIR)
-    
-    # Print high-confidence binary events
-    predictions_df = pd.read_csv(DIR / "event_predictions.csv", index_col=0)
-    binary_events = predictions_df[predictions_df['Predicted_Type'] == 'BinaryLenseEvent']
-    top_binary = binary_events.sort_values('Confidence', ascending=False).head(10)
-    
-    print(f"\nTop 10 Binary Lens Candidates:")
-    print("-" * 40)
-    for event_id, row in top_binary.iterrows():
-        print(f"{event_id}: {row['Confidence']:.1%}")
+    # 1. Plot and show the pie chart (cake) of event type distribution
+    # type_counts = predictions_df['Predicted_Type'].value_counts()
+    # colors = ['lightcoral', 'lightgreen', 'lightblue']
+    # plt.figure(figsize=(7, 7))
+    # plt.pie(list(type_counts.values), labels=list(type_counts.index), autopct='%1.1f%%', colors=colors, startangle=90)
+    # plt.title('Distribución de Tipos de Evento', fontsize=16, fontweight='bold')
+    # plt.tight_layout()
+    # plt.show()
+
+    # 2. Plot and save the original 3x4 grid of examples by type (Single, Binary, Noise)
+    plot_examples_by_type(predictions_df, ogle_df, DIR, outname="clasificacion_final_4.pdf")

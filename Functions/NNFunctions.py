@@ -244,6 +244,7 @@ def lightcurve_normalizer(row) -> Optional[pd.Series]:
         outer_mask = abs(HJD) > 2*te
         inner_mask = ~outer_mask
         
+        
         if not np.any(inner_mask):
             print(f"Empty inner mask for event {row.name}, skipping...")
             return None
@@ -265,6 +266,10 @@ def lightcurve_normalizer(row) -> Optional[pd.Series]:
         I_Inner = I_mag[inner_mask]
         HJD_Inner = HJD[inner_mask]
         Magnification = 10**(-0.4*(I_Inner-baseline))
+
+        if len(HJD_Inner) < 20:
+            print(f"Insufficient data points for event {row.name}, skipping...")
+            return None
         
         Magnification_normalized = normalize_array(Magnification, range_type="zero_one")
 
@@ -638,37 +643,6 @@ def get_random_params(n_samples: int, binary: bool = False, filename: str = "", 
     
     return random_params    
 
-def plot_random_distributions(generated_values: dict, original_stats: dict):
-    """Plot distributions of random parameters against their original statistics.
-    
-    Args:
-        random_params: Dictionary containing arrays of generated random values
-        stats: Dictionary containing original parameter statistics
-    """
-    n_params = len(generated_values)
-    fig, axes = plt.subplots(1, n_params, figsize=(6*n_params, 5))
-    
-    for (param_name, values), ax in zip(generated_values.items(), axes):
-        
-        ax.hist(values, bins=30, density=True, alpha=0.6, label='Generated')
-        
-        ax.axvline(original_stats[param_name]['mean'], 
-                  color='r', linestyle='--', label='Mean')
-        ax.axvline(original_stats[param_name]['median'], 
-                  color='g', linestyle='--', label='Median')
-        
-        quantiles, values = np.array([(float(q)/100, float(v)) for q, v in original_stats['quantiles'].items()]).T
-        ax.plot(values, np.zeros_like(values), 'k|', markersize=10, label='Quantiles')
-        
-        ax.set_xlabel(f'{param_name}')
-        ax.set_title(f'Generated {param_name} Distribution')
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-    
-    plt.tight_layout()
-    plt.show()
-
-
 # ---------------------------------------------------------------------------------------
 # Funtions for binary curves calculation
 # ---------------------------------------------------------------------------------------
@@ -717,87 +691,6 @@ def get_trajectory_extreme_points(u0_values: np.ndarray, alpha_values: np.ndarra
     end_points = [(x_end[i], y_end[i]) for i in range(len(x_end))]
     
     return np.array(start_points), np.array(end_points)
-
-def plot_magnification_curve(binary_data: BinaryLens_Data):
-    """Plot the trajectory and its magnification curve using the new dataclass approach."""
-
-    if len(binary_data.zeta) == 0 or len(binary_data.magnification) == 0:
-        raise ValueError("Binary lens data must have trajectory and magnification calculated")
-
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
-    
-    # Extract trajectory data
-    trajectory = binary_data.zeta
-    magnifications = binary_data.magnification
-    z1 = binary_data.z1
-    z2 = binary_data.z2
-    
-    # Find the point of closest approach
-    distances = np.abs(trajectory - z1)
-    min_idx = np.argmin(distances)  
-    u0 = distances[min_idx]
-    
-    ax1.plot(trajectory.real, trajectory.imag, 'b-', alpha=0.6, label='Source Trajectory')
-
-    ax1.scatter([trajectory.real[0]], [trajectory.imag[0]], c='yellow', s=100, 
-                label='Start', zorder=3)
-    ax1.scatter([trajectory.real[min_idx]], [trajectory.imag[min_idx]], 
-                c='red', marker='s', s=100, label='Closest Approach', zorder=3)    
-    ax1.scatter([z1], [0], c='g', marker='o', s=100, label=f'Lens 1 (m={binary_data.m1:.2f})')
-    ax1.scatter([z2], [0], c='k', marker='o', s=100, label=f'Lens 2 (m={binary_data.m2:.2f})')
-
-    ax1.grid(True, alpha=0.3)
-    ax1.set_aspect('equal')
-    ax1.set_xlabel('Re(ζ)')
-    ax1.set_ylabel('Im(ζ)')
-    ax1.set_title(f'Binary Lens System (d={binary_data.d:.2f}, q={binary_data.q:.3f}, u₀={u0:.2f})')
-    ax1.legend()
-    
-    # Create normalized time array
-    times_normalized = np.linspace(0, 1, len(magnifications))
-    ax2.plot(times_normalized, magnifications, 'r-', label='Total Magnification')
-
-    ax2.scatter([times_normalized[min_idx]], [magnifications[min_idx]], 
-                c='red', marker='s', s=100, zorder=3, label='Peak Magnification')
-    
-    ax2.grid(True, alpha=0.3)
-    ax2.set_xlabel('Normalized Time')
-    ax2.set_ylabel('Magnification')
-    ax2.set_title('Light Curve')
-    ax2.legend()
-    
-    plt.tight_layout()
-    plt.show()
-    ax2.set_ylabel('Magnification')
-    ax2.set_title('Light Curve')
-    
-    plt.tight_layout()
-    plt.show()
-
-def calculate_trajectory(start_point: complex, end_point: complex, n_points: int =1000) -> Tuple[np.ndarray, np.ndarray]:
-    
-    times = np.linspace(0, 1, int(n_points))
-    trajectory = start_point + (end_point - start_point) * times
-    
-    return trajectory, times
-
-def calculate_magnification(trajectory, q, z1, mt=1.0) -> Tuple[np.ndarray, np.ndarray]:
-   
-    magnifications = np.zeros(len(trajectory))
-    
-    m1 = mt/(1 + q) 
-    m2 = q*m1        
-    md = m1-m2
-    
-    # Calculate magnification for each point
-    for i, trajectory_position in enumerate(trajectory):
-        image_positions = find_image_positions(trajectory_position, z1, mt, md)
-        magnification, _ = calculate_total_magnification(image_positions, z1, m1, m2)
-        magnifications[i] = magnification
-    
-    normalized_magnifications = normalize_array(magnifications, range_type="zero_one")
-    
-    return normalized_magnifications
 
 # ----------------------------------------------------------------------------------------
 # Functions for resampling
@@ -1590,24 +1483,6 @@ def model_predictor(model: PersonalizedSequential, df: pd.DataFrame, sequence_le
     }, index=df.index)  
 
     return results_df
-
-def get_top_predictions(df: pd.DataFrame, n=20) -> dict:
-    """Get top n predictions for each event type.
-    
-    Args:
-        results_df: DataFrame with predictions
-        n: Number of top predictions to return per type (default=20)
-    
-    Returns:
-        dict: Dictionary with top predictions for each event type
-    """
-    dic = {
-        event_type: (df[df['Predicted_Type'] == event_type]
-                    .sort_values('Confidence', ascending=False)
-                    .head(n))
-        for event_type in ['Noise', 'SingleLenseEvent', 'BinaryLenseEvent']
-    }
-    return dic
 
 def summary_prediction(df: pd.DataFrame, event_types: list):
 

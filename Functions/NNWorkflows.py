@@ -21,6 +21,7 @@ save_filename_ogle = "ogle_lightcurves.pkl"
 ogle_events_filename_v = "Confirmed_OGLEEvents.txt"
 model_filename_v = "event_classifier.keras"
 save_filename_predictions = "event_predictions.csv"
+save_filename_predictions_check = "event_predictions_confirmed.csv"
 df_previousmodels_v = "model_comparison.csv"
 df_newmodels_v = "model_newrun.csv"
 plot_models_file_v = "model_comparison_analysis.pdf"
@@ -145,7 +146,8 @@ def ModelBuilder(model_configuration: dict =  {},
 def ModelChecker(sequence_length: int, interpolation_method: str = "linear",
                  model_filename: str = model_filename_v, ogle_filename: str = save_filename_ogle,
                  ogle_events_filename: str = ogle_events_filename_v,
-                 DIR: Path = ROOT_DIR) -> None:
+                 csv_out_filename: str = save_filename_predictions_check,
+                 DIR: Path = ROOT_DIR) -> pd.DataFrame:
     
     model = model_loader(model_filename, DIR)
     config_to_check = {"sequence_length": sequence_length, "interpolation": interpolation_method}
@@ -159,9 +161,18 @@ def ModelChecker(sequence_length: int, interpolation_method: str = "linear",
     print(f"Found {len(confirmed_df)} matching light curves")
     
     if len(confirmed_df) > 0:
-        model_checker(confirmed_df, model, sequence_length, interpolation_method)    
+        # Use model_checker for display
+        model_checker(confirmed_df, model, sequence_length, interpolation_method)
+        
+        # Generate predictions and save to CSV like ModelUser
+        event_types = ['Noise', 'SingleLenseEvent', 'BinaryLenseEvent'] 
+        results_df = model_predictor(model, confirmed_df, sequence_length, interpolation_method, event_types)
+        save_to_csv(results_df, csv_out_filename, DIR)
+        
+        return results_df
     else:
         print("No matching events found in dataset. Check index formatting.")
+        return pd.DataFrame()
 
 def ModelUser(sequence_length: int, interpolation_method: str = "linear",
               model_filename: str = model_filename_v, data_filename: str = save_filename_ogle, 
