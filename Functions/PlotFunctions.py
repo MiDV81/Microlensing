@@ -334,6 +334,7 @@ def plot_binary_lens_caustics_grid(binary_systems: list[BinaryLens_Data], topolo
     fig_width = 5 * num_cols
     fig_height = 4 * num_rows  # Reduced height per row
     fig = plt.figure(figsize=(fig_width, fig_height))
+    fig.patch.set_facecolor('#E8E8E8')  # Set figure background
     
     # Ajustar espaciado - subplots tocándose horizontalmente, más espacio vertical si hay múltiples filas o etiquetas
     if num_rows > 1:
@@ -354,6 +355,7 @@ def plot_binary_lens_caustics_grid(binary_systems: list[BinaryLens_Data], topolo
         
                 # Crear subplot individual
         ax = fig.add_subplot(gs[row, col])
+        ax.set_facecolor('#E8E8E8')  # Set axes background
         
         # Añadir círculos negros para representar las posiciones de las lentes (PRIMERO)
         if binary_data.m1 is None or binary_data.m2 is None or binary_data.z1 is None or binary_data.z2 is None:
@@ -411,7 +413,7 @@ def plot_binary_lens_caustics_grid(binary_systems: list[BinaryLens_Data], topolo
         if topology:
             from matplotlib.patches import Rectangle
             text_x, text_y = 0.5, -0.08  # Posición en la parte inferior
-            bbox_props = dict(boxstyle="round,pad=0.3", facecolor='white', alpha=0.8, edgecolor='none')
+            bbox_props = dict(boxstyle="round,pad=0.3", facecolor='#E8E8E8', alpha=0.8, edgecolor='none')
             ax.text(text_x, text_y, topology, 
                     ha='center', va='bottom', transform=ax.transAxes, 
                     fontsize=12, color='black', weight="bold",

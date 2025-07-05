@@ -17,9 +17,10 @@ os.makedirs(output_dir, exist_ok=True)
 # d: linearly spaced from 1.0 to 3.0
 
 num_systems = 4
-q_values = np.logspace(np.log10(0.01), np.log10(0.1), num_systems)  # [0.001, 0.002, 0.005, 0.01]
-d_values = np.linspace(0.5, 2.0, num_systems)  # [1.0, 1.67, 2.33, 3.0]
-
+# q_values = np.logspace(np.log10(0.01), np.log10(0.1), num_systems)  # [0.001, 0.002, 0.005, 0.01]
+# d_values = np.linspace(0.5, 2.0, num_systems)  # [1.0, 1.67, 2.33, 3.0]
+q_values = [1.0, 1.0, 1.0]
+d_values = [0.5, 1.2, 2.5]
 # Crear los sistemas binarios usando el parámetro d
 binary_systems = []
 topology_labels = []
@@ -44,5 +45,5 @@ plot_binary_lens_caustics_grid(
     num_rows=1,  # 1 fila, 4 columnas
     num_points=1000,
     auto_limits=True,  # Límites automáticos basados en z1 de cada sistema
-    save_path=os.path.join(output_dir, 'binary_lens_4systems_1row.pdf')
+    save_path=os.path.join(output_dir, 'topologies_presentation.pdf')
 )

@@ -14,8 +14,8 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Definir parámetros del sistema
 m_t = 1.0      # Masa total
-q = 0.1        # Relación de masas
-z1 = 0.5       # Posición de la primera lente
+q = 1        # Relación de masas
+z1 = 0.0       # Posición de la primera lente
 
 # Definir trayectoria
 start_point = (-2, -1)    # Punto inicial (x, y)
