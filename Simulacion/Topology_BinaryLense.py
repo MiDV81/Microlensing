@@ -16,14 +16,14 @@ os.makedirs(output_dir, exist_ok=True)
 # q: logarithmically spaced from 0.001 to 0.01
 # d: linearly spaced from 1.0 to 3.0
 
-num_systems = 4
+num_systems = 3
 # q_values = np.logspace(np.log10(0.01), np.log10(0.1), num_systems)  # [0.001, 0.002, 0.005, 0.01]
 # d_values = np.linspace(0.5, 2.0, num_systems)  # [1.0, 1.67, 2.33, 3.0]
 q_values = [1.0, 1.0, 1.0]
 d_values = [0.5, 1.2, 2.5]
 # Crear los sistemas binarios usando el parámetro d
 binary_systems = []
-topology_labels = []
+topology_labels = ["Cerrada", "Intermedia", "Ancha"]
 
 for i in range(num_systems):
     # Crear sistema usando d (separation distance) en lugar de z1
@@ -37,13 +37,14 @@ for i in range(num_systems):
 
 print(f"Creados {len(binary_systems)} sistemas:")
 for i, system in enumerate(binary_systems):
-    print(f"Sistema {i+1}: q={system.q:.3f}, d={d_values[i]:.1f}, z1={system.z1:.2f}")
+    print(f"Sistema {i+1}: q={system.q:.1f}, d={d_values[i]:.1f}, z1={system.z1:.2f}")
 
 # Crear el plot de grilla con 1 fila (4x1 grid)
 plot_binary_lens_caustics_grid(
     binary_systems=binary_systems,
+    topology_labels=topology_labels,
     num_rows=1,  # 1 fila, 4 columnas
     num_points=1000,
-    auto_limits=True,  # Límites automáticos basados en z1 de cada sistema
-    save_path=os.path.join(output_dir, 'topologies_presentation.pdf')
+    auto_limits=False,  # Límites automáticos basados en z1 de cada sistema
+    save_path=os.path.join(output_dir, 'topologies_presentation.png')
 )

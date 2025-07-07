@@ -406,7 +406,7 @@ def plot_binary_lens_caustics_grid(binary_systems: list[BinaryLens_Data], topolo
         d = 2 * abs(binary_data.z1)  # Separación total entre lentes
         
         # Añadir etiqueta de parámetros como título (siempre en la parte superior)
-        title_str = f"q={q:.3f}, d={d:.1f}"  
+        title_str = f"q={q:.1f}, d={d:.1f}"  
         ax.set_title(title_str, fontsize=12, weight="bold")
         
         # Añadir etiqueta de topología en la parte inferior si está disponible

@@ -71,37 +71,37 @@ def plot_binary_lens_trajectory_static(binary_data: BinaryLens_Data,
         if not hasattr(binary_data, 'critical_points') or binary_data.critical_points.size == 0:
             binary_data = calculate_caustics_and_critical_curves_binary_lense(binary_data, num_caustic_points)
 
-    plt.style.use('dark_background')
+    plt.style.use('default')  # Use default style instead of dark_background
 
     # === TRAJECTORY PLOT ===
     if plot_type in ['trajectory', 'both']:
         fig, plot_ax = plt.subplots(1, 1, figsize=(10, 8))
-        fig.patch.set_facecolor('#262626')
-        plot_ax.set_facecolor('#262626')
+        fig.patch.set_facecolor('#E8E8E8')
+        plot_ax.set_facecolor('#E8E8E8')
 
         if show_caustics and hasattr(binary_data, 'critical_points') and len(binary_data.critical_points) > 0:
             plot_ax.scatter(binary_data.critical_points.real, binary_data.critical_points.imag, 
-                            s=1, c='cyan', alpha=0.3)
+                            s=1, c='blue', alpha=0.5)
             plot_ax.scatter(binary_data.caustic_points.real, binary_data.caustic_points.imag, 
-                            s=1, c='magenta', alpha=0.3)
+                            s=1, c='red', alpha=0.5)
 
         lens1_size = 0.15 * binary_data.m1
         lens2_size = 0.15 * binary_data.m2
         lens1_circle = Circle((binary_data.z1, 0), lens1_size, 
-                              facecolor='white', edgecolor='red', fill=True, zorder=10)
+                              facecolor='orange', edgecolor='black', fill=True, zorder=10)
         lens2_circle = Circle((binary_data.z2, 0), lens2_size, 
-                              facecolor='white', edgecolor='red', fill=True, zorder=10)
+                              facecolor='orange', edgecolor='black', fill=True, zorder=10)
         plot_ax.add_patch(lens1_circle)
         plot_ax.add_patch(lens2_circle)
 
         source_real = [z.real for z in binary_data.zeta]
         source_imag = [z.imag for z in binary_data.zeta]
-        plot_ax.plot(source_real, source_imag, 'lime', alpha=0.3, linestyle='--', linewidth=2)
+        plot_ax.plot(source_real, source_imag, 'green', alpha=0.5, linestyle='--', linewidth=2)
 
         # Mostrar todas las imágenes como puntos grises pequeños
         for img_list in binary_data.image_positions:
             for sol in img_list:
-                plot_ax.scatter(sol.real, sol.imag, c='black', s=1, alpha=0.6, zorder=2)
+                plot_ax.scatter(sol.real, sol.imag, c='gray', s=1, alpha=0.6, zorder=2)
 
         plot_ax.set_xlim(-2, 2)
         plot_ax.set_ylim(-1.25, 1.25)
@@ -123,11 +123,11 @@ def plot_binary_lens_trajectory_static(binary_data: BinaryLens_Data,
     # === MAGNIFICATION PLOT ===
     if plot_type in ['magnification', 'both']:
         fig, mag_ax = plt.subplots(1, 1, figsize=(10, 6))
-        fig.patch.set_facecolor('#262626')
-        mag_ax.set_facecolor('#262626')
+        fig.patch.set_facecolor('#E8E8E8')
+        mag_ax.set_facecolor('#E8E8E8')
 
         t_normalized = np.linspace(0, 1, num_points)
-        mag_ax.plot(t_normalized, binary_data.magnification, color='cyan', linewidth=1.5, alpha=0.9)
+        mag_ax.plot(t_normalized, binary_data.magnification, color='blue', linewidth=1.5, alpha=0.9)
 
         mag_ax.set_xlim(0, 1)
         # mag_ax.set_xlabel(r'Posición Normalizada en la Trayectoria', fontsize=12, fontweight='bold')
@@ -154,7 +154,7 @@ def plot_binary_lens_trajectory_static(binary_data: BinaryLens_Data,
     print("=== Plot estático completado ===")
 
 # Ruta base sin extensión (se usará `.png` para trayectoria)
-output_base_path = "./Simulacion/Images/BinaryLense/binary_lens_trajectory_static_dark.png"
+output_base_path = "./Simulacion/Images/BinaryLense/binary_lens_trajectory_static_gray.png"
 
 # Llamar a la función con ambos plots y ruta base para guardado
 plot_binary_lens_trajectory_static(
